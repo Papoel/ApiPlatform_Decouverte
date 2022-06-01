@@ -16,8 +16,17 @@ use Symfony\Component\Serializer\Annotation\Groups;
         'get' => [
             'normalization_context' =>  ['groups' => ['collection']],
         ],
+        'post'
     ],
-    itemOperations: ['get']
+    itemOperations: [
+        'get' => [
+            'normalization_context' =>  ['groups' => ['item']],
+        ],
+        'put',
+        'delete',
+    ],
+
+    denormalizationContext: ['groups' => ['write']],
 )]
 class Movie
 {
@@ -28,34 +37,36 @@ class Movie
     private ?int $id = null;
 
     #[ORM\Column(type: 'string', length: 255)]
-    #[Groups(['collection'])]
+    #[Groups(['collection', 'item', 'write'])]
     private string $title;
 
     #[ORM\Column(type: 'integer')]
-    #[Groups(['collection'])]
+    #[Groups(['collection', 'item', 'write'])]
     private int $duration;
 
     #[ORM\Column(type: 'integer')]
-    #[Groups(['collection'])]
+    #[Groups(['collection', 'item', 'write'])]
     private int $productionYear;
 
     #[ORM\Column(type: 'text')]
-    #[Groups(['collection'])]
+    #[Groups(['collection', 'item', 'write'])]
     private string $synopsis;
 
     #[ORM\ManyToOne(targetEntity: Genre::class)]
     #[ORM\JoinColumn(nullable: false)]
-    #[Groups(['collection'])]
+    #[Groups(['collection', 'item', 'write'])]
     private Genre $genre;
 
     #[ORM\ManyToMany(targetEntity: Person::class)]
     #[ORM\JoinTable(name: 'movie_actors')]
     #[ApiSubresource]
+    #[Groups(['item', 'write'])]
     private Collection $actors;
 
     #[ORM\ManyToMany(targetEntity: Person::class)]
     #[ORM\JoinTable(name: 'movie_directors')]
     #[ApiSubresource]
+    #[Groups(['item', 'write'])]
     private Collection $directors;
 
     public function __construct()
@@ -159,5 +170,21 @@ class Movie
     public function getDirectors(): Collection
     {
         return $this->directors;
+    }
+
+    public function addDirector(Person $director): self
+    {
+        if (!$this->directors->contains($director)) {
+            $this->directors[] = $director;
+        }
+
+        return $this;
+    }
+
+    public function removeDirector(Person $director): self
+    {
+        $this->directors->removeElement($director);
+
+        return $this;
     }
 }

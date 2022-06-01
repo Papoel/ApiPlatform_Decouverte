@@ -9,6 +9,9 @@ use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\OrderFilter;
 use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\SearchFilter;
 use App\Repository\PersonRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Validator\Constraints\NotBlank;
+use Symfony\Component\Validator\Constraints\NotIdenticalTo;
 
 #[ORM\Entity(repositoryClass: PersonRepository::class)]
 #[ApiResource(
@@ -40,9 +43,16 @@ class Person
     private ?int $id = null;
 
     #[ORM\Column(type: 'string', length: 255)]
+    #[NotBlank]
+
+    #[Groups(['item'])]
     private string $firstname;
 
     #[ORM\Column(type: 'string', length: 255)]
+    #[NotBlank]
+
+    #[Groups(['item'])]
+    #[NotIdenticalTo(propertyPath: 'firstname')]
     private string $lastname;
 
     public function getId(): ?int

@@ -5,7 +5,7 @@ add link to video here
 
 [Vidéo YouTube](https://www.youtube.com/watch?v=GGftlmFoyWI)
 
-Timer: 40'
+Timer: 1H20'
 
 # DataProvider
 
@@ -78,5 +78,17 @@ les acteurs et réalisateurs d'un film.
 
 # La Validation
 
+# Data Transformer Object
 
+## Qu'est-ce que c'est ?
 
+Un DTO peut être soit un `input` soit un `output`.
+
+**`Un Input`** est la donnée qui va être envoyée à l'API via la requête.
+
+**`L'Output`** est la donnée qui va être envoyée au client (La Response) en résultat de la requête.
+
+**`Controller`**
+
+**`Data Persister`** Est le service que l'on va implémenter qui va permettre 
+de persister une donnée dans la base de donnée.
