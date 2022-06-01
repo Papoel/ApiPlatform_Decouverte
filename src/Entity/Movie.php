@@ -3,42 +3,59 @@
 namespace App\Entity;
 
 use ApiPlatform\Core\Annotation\ApiResource;
+use ApiPlatform\Core\Annotation\ApiSubresource;
 use App\Repository\MovieRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: MovieRepository::class)]
-#[ApiResource]
+#[ApiResource(
+    collectionOperations: [
+        'get' => [
+            'normalization_context' =>  ['groups' => ['collection']],
+        ],
+    ],
+    itemOperations: ['get']
+)]
 class Movie
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
+    #[Groups(['collection'])]
     private ?int $id = null;
 
     #[ORM\Column(type: 'string', length: 255)]
+    #[Groups(['collection'])]
     private string $title;
 
     #[ORM\Column(type: 'integer')]
+    #[Groups(['collection'])]
     private int $duration;
 
     #[ORM\Column(type: 'integer')]
+    #[Groups(['collection'])]
     private int $productionYear;
 
     #[ORM\Column(type: 'text')]
+    #[Groups(['collection'])]
     private string $synopsis;
 
     #[ORM\ManyToOne(targetEntity: Genre::class)]
     #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['collection'])]
     private Genre $genre;
 
     #[ORM\ManyToMany(targetEntity: Person::class)]
     #[ORM\JoinTable(name: 'movie_actors')]
+    #[ApiSubresource]
     private Collection $actors;
 
     #[ORM\ManyToMany(targetEntity: Person::class)]
     #[ORM\JoinTable(name: 'movie_directors')]
+    #[ApiSubresource]
     private Collection $directors;
 
     public function __construct()
