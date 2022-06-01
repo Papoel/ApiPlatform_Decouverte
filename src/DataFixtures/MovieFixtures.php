@@ -30,10 +30,12 @@ class MovieFixtures extends Fixture implements DependentFixtureInterface
 
                 shuffle($persons);
 
+                // Ajouter 3 acteurs au hasard
                 foreach (array_slice($persons, 0, 3) as $person) {
                     $movie->getActors()->add($person);
                 }
 
+                // Ajouter 2 réalisateurs au hasard
                 foreach (array_slice($persons, 3, 2) as $person) {
                     $movie->getDirectors()->add($person);
                 }
