@@ -4,10 +4,12 @@ namespace App\Entity;
 
 use ApiPlatform\Core\Annotation\ApiResource;
 use ApiPlatform\Core\Annotation\ApiSubresource;
+use App\Controller\RandomMovie;
 use App\Repository\MovieRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: MovieRepository::class)]
@@ -16,7 +18,15 @@ use Symfony\Component\Serializer\Annotation\Groups;
         'get' => [
             'normalization_context' =>  ['groups' => ['collection']],
         ],
-        'post'
+        'post',
+        'random' => [
+            'controller' => RandomMovie::class,
+            'path' => '/movies/random',
+            'output' => Movie::class,
+            'method' => Request::METHOD_GET,
+            'pagination_enabled' => false,
+            'normalization_context' =>  ['groups' => ['item']],
+        ],
     ],
     itemOperations: [
         'get' => [
