@@ -1,3 +1,17 @@
+<style>
+    .folder {
+        color: #c159d5;
+        font-style: italic;
+        font-family: sans-serif;
+        font-size: 14px;
+        letter-spacing: 1px;
+    }
+    .folder::before {
+        content: "📁";
+    }
+</style>
+
+<span class="folder">/src/etc ...</span>
 # TODO FORMATION THOMAS BOILEAU
 
 [//]: # (source:https://www.youtube.com/watch?v=GGftlmFoyWI)
@@ -92,3 +106,316 @@ Un DTO peut être soit un `input` soit un `output`.
 
 **`Data Persister`** Est le service que l'on va implémenter qui va permettre 
 de persister une donnée dans la base de donnée.
+
+---
+
+# Query Custom
+
+## On va récupérer aléatoirement un film.
+
+On va l'appeler `random` dans `collection_operation`car on ne vas pas lui passer d'id
+
+Etape 1 : On va lui passer un chemin ( ce sera `/api/movies/random` ).
+
+En faisant cela lorsque je me rends sur mon URL j'obtiens cette
+erreur :
+
+```php
+The route "random" of the resource "Movie" was not found.
+```
+
+Pour corriger cette erreur, je dois créer un Controller.
+Je me rends dans le dossier `src/Controller` et je crée un nouveau
+Controller qui va se nommer `RandomMovie`.
+
+ce Controller sera une `final class`.
+
+J'écris ce code dans le fichier `RandomMovie.php` et je fais ceci:
+
+<span class="folder">/src/Controller/RandomMovie.php</span>
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace App\Controller;
+
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Routing\Annotation\Route;
+
+final class RandomMovie
+{
+    public function __invoke(): void
+    {
+        // TODO: Implement __invoke() method.
+    }
+}
+```
+
+Je me rends dans mon fichier `services.yaml` et j'ajoute 
+la partie `App\Controller\`:
+
+<span class="folder">config/services.yaml<span>
+
+```yaml
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/Entity/'
+            - '../src/Kernel.php'
+    App\Controller\:
+        resource: '../src/Controller/'
+        tags:
+            - controller.service_arguments
+```
+
+Une fois ceci fait je vais maintenant créer une fonction
+`getRandomMovie`dans mon `MovieRepository`.
+
+<span class="folder">src/Repository/MovieRepository.php</span>
+
+```php
+public function getRandomMovie(): Movie
+    {
+        return $this->createQueryBuilder('m')
+            ->orderBy('RAND()')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getSingleResult()
+        ;
+    }
+```
+
+Ici la méthode `RAND()` n'est pas reconnu je dois installer
+le bundle `Berberlei` avec la commande
+`composer require beberlei/doctrineextensions`. pour pouvoir l'utiliser.
+
+Une fois le bundle installé je me rends dans le fichier
+`config/packages/doctrine.yaml` et je rajoute les lignes suivantes :
+
+> ︎⚠️ **Uniquement si la BDD est en MySQL**
+
+<span class="folder">config/packages/doctrine.yaml</span>
+
+```yaml
+    orm:
+      auto_generate_proxy_classes: true
+      naming_strategy: doctrine.orm.naming_strategy.underscore_number_aware
+      auto_mapping: true
+      mappings:
+        App:
+          is_bundle: false
+          dir: '%kernel.project_dir%/src/Entity'
+          prefix: 'App\Entity'
+          alias: App
+        dql:
+          numeric_functions:
+            rand: DoctrineExtensions\Query\Mysql\Rand
+        
+```
+
+> ✅ **En SqlLite**
+
+<span class="folder">config/packages/doctrine.yaml</span>
+
+```yaml
+orm:
+  auto_generate_proxy_classes: true
+  naming_strategy: doctrine.orm.naming_strategy.underscore_number_aware
+  auto_mapping: true
+  mappings:
+    App:
+      is_bundle: false
+      dir: '%kernel.project_dir%/src/Entity'
+      prefix: 'App\Entity'
+      alias: App
+    dql:
+    numeric_functions:
+      rand: DoctrineExtensions\Query\Sqlite\Random
+```
+
+> 🔆 En gros pour `Sqlite` je dois modifier partout ou j'ai
+`rand` en `random`.
+
+<span class="folder">src/Repository/MovieRepository.php</span>
+
+```php
+public function getRandomMovie(): Movie
+    {
+        return $this->createQueryBuilder('m')
+            ->orderBy('RANDOM()')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getSingleResult()
+        ;
+    }
+```
+
+Maintenant je me rends dans mon Entity `Movie` et je modifie le code pour qu'il
+prenne un compte le controller et non plus la route en dur.
+
+<span class="folder">src/Entity/Movie.php</span>
+```php
+    collectionOperations: [
+        'get' => [
+            'normalization_context' =>  ['groups' => ['collection']],
+        ],
+        'post',
+        'random' => [
+            'controller' => RandomMovie::class,
+            'path' => '/movies/random',
+            'output' => Movie::class,
+            'method' => Request::METHOD_GET,
+            'pagination_enabled' => false,
+            'normalization_context' =>  ['groups' => ['item']],
+        ],
+    ],
+```
+
+## Création d'un Décorateur.
+
+Je commence par créer un nouveau dossier `OpenApi`dans `src`
+dans lequel je vais créer un fichier `MovieApiFactory.php`
+
+<span class="folder">src/OpenApi/MovieApiFactory.php</span>
+
+```php
+<?php
+
+namespace App\openApi;
+
+use ApiPlatform\Core\OpenApi\Factory\OpenApiFactoryInterface;
+use ApiPlatform\Core\OpenApi\OpenApi;
+
+final class MovieApifactory implements openApiFactoryInterface
+{
+    public function __construct(private OpenApiFactoryInterface $decorated)
+    {
+    }
+
+    public function __invoke(array $context = []): OpenApi
+    {
+        $openApi = $this->decorated->__invoke($context);
+
+        $pathItem = $openApi->getPaths()->getPath('/api/movies/random');
+
+        $operation = $pathItem->getGet();
+
+        dd($operation);
+
+        return $openApi;
+    }
+}
+```
+
+Je dois décorer mon `services.yaml`
+
+<span class="folder">config/services.yaml</span>
+
+```yaml
+    App\Controller\:
+        resource: '../src/Controller/'
+        tags:
+            - controller.service_arguments
+    # add more service definitions when explicit configuration is needed
+    # please note that last definitions always *replace* previous ones
+
+    App\OpenApi\MovieApiFactory:
+        decorates: 'api_platform.openapi.factory'
+        arguments: [ '@App\OpenApi\MovieApiFactory.inner' ]
+        autoconfigure: false
+
+```
+
+<span class="folder">src/OpenApi/MovieApiFactory.php</span>
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace App\OpenApi;
+
+use ApiPlatform\Core\OpenApi\Factory\OpenApiFactoryInterface;
+use ApiPlatform\Core\OpenApi\OpenApi;
+
+/**
+ * Retrieve Random Movie Resource
+ * From T.Boileau YouTube Live
+ * Code Refacto by MySelf
+ */
+final class MovieApiFactory implements OpenApiFactoryInterface
+{
+    public function __construct(private readonly OpenApiFactoryInterface $decorated)
+    {
+    }
+
+    public function __invoke(array $context = []): OpenApi
+    {
+        $openApi = $this
+            ->decorated
+            ->__invoke($context)
+        ;
+
+        $randomItem = $openApi
+            ->getPaths()
+            ->getPath('/api/movies/random')
+        ;
+
+        $getItem = $openApi
+            ->getPaths()
+            ->getPath('/api/movies/{id}')
+        ;
+
+        if (isset($randomItem)) {
+            $randomOperation = $randomItem
+                ->getGet()
+            ;
+        }
+
+        if (isset($getItem)) {
+            $getOperation = $getItem
+                ->getGet()
+            ;
+        }
+
+        if (isset($randomOperation, $getOperation)) {
+            $randomOperation
+                ->addResponse(
+                    $getOperation->getResponses()[200],
+                    200
+                );
+        }
+
+        if (isset($randomOperation)) {
+            $randomOperation = $randomOperation
+                // Summary => Définition principale
+                ->withSummary('Retrieve Random Movie resource. ')
+                // Description => Description détaillée de la fonction.
+                ->withDescription('Récupère des ressources cinématographiques aléatoires');
+        }
+
+        if (isset($randomOperation)) {
+            $randomItem = $randomItem
+                ->withGet($randomOperation)
+            ;
+        }
+
+        $openApi
+            ->getPaths()
+            ->addPath(
+                '/api/movies/random',
+                $randomItem
+            )
+        ;
+
+        return $openApi;
+    }
+}
+
+```
+
+Cette classe me retournera un objet OpenApi qui retournera aléatoirement
+un élément de la collection.
